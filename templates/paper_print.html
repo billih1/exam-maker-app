@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ exam.exam_title }} - ExamForge Local</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/print.css">
+    <style>
+        .print-toolbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .print-toolbar a,
+        .print-toolbar button {
+            color: #e2e8f0;
+            background: #334155;
+            border: 1px solid #475569;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .print-toolbar a:hover,
+        .print-toolbar button:hover {
+            background: #475569;
+        }
+        .print-toolbar .btn-print {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: #fff;
+        }
+        .print-toolbar .btn-print:hover {
+            background: #2563eb;
+        }
+        .print-toolbar label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        .print-toolbar input[type="checkbox"] {
+            width: 16px; height: 16px; cursor: pointer;
+        }
+        .print-toolbar .spacer { flex:1; }
+        .print-toolbar .paper-code-label {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #93c5fd;
+        }
+        body { padding-top: 56px; }
+    </style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="print-toolbar no-print">
+    <a href="/saved-papers">← Back</a>
+    <button class="btn-print" onclick="window.print()">🖨 Print Paper</button>
+    <label>
+        <input type="checkbox" id="shuffle-toggle">
+        Code A / B Shuffle
+    </label>
+    <label>
+        <input type="checkbox" id="answer-key-toggle">
+        Include Answer Key
+    </label>
+    <span class="spacer"></span>
+    <span class="paper-code-label" id="paper-code-label"></span>
+</div>
+
+<!-- Exam Container -->
+<div class="exam-container" id="exam-container"></div>
+
+<!-- Answer Key -->
+<div id="answer-key-section" style="display:none;">
+    <div class="answer-key-box">
+        <div class="answer-key-title">TEACHER ANSWER KEY</div>
+        <div class="answer-key-grid" id="answer-key-grid"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    /* ── Data from Flask ── */
+    var examData    = {{ exam | tojson }};
+    var questions   = {{ questions | tojson }};
+    var subjectName = {{ subject_name | tojson }};
+    var className   = {{ class_name | tojson }};
+    /* Strip leading "Class " to avoid "Class: Class 10" */
+    className = (className || '').replace(/^class\s+/i, '');
+
+    /* Build lookup map: id → question */
+    var qMap = {};
+    questions.forEach(function(q) { qMap[q.id] = q; });
+
+    /* Parse config_json */
+    var config;
+    try {
+        config = typeof examData.config_json === 'string'
+            ? JSON.parse(examData.config_json)
+            : examData.config_json;
+    } catch(e) {
+        config = {};
+    }
+
+    /* ── Roman numerals ── */
+    var ROMAN = ['i','ii','iii','iv','v','vi','vii','viii','ix','x',
+                 'xi','xii','xiii','xiv','xv','xvi','xvii','xviii','xix','xx',
+                 'xxi','xxii','xxiii','xxiv','xxv','xxvi','xxvii','xxviii','xxix','xxx'];
+
+    function toRoman(n) {
+        return '(' + (ROMAN[n] || (n + 1)) + ')';
+    }
+
+    function toAlpha(n) {
+        return '(' + String.fromCharCode(97 + n) + ')';
+    }
+
+    function padMarks(m) {
+        var s = String(Math.round(m));
+        return s.length < 2 ? '0' + s : s;
+    }
+
+    function formatDate(ts) {
+        if (!ts) return '';
+        try {
+            var d = new Date(ts);
+            if (isNaN(d.getTime())) return ts;
+            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        } catch(e) { return ts; }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    /* ── Fisher-Yates seeded shuffle ── */
+    function seededRandom(seed) {
+        var s = seed;
+        return function() {
+            s = (s * 9301 + 49297) % 233280;
+            return s / 233280;
+        };
+    }
+
+    function shuffleArray(arr, rng) {
+        var a = arr.slice();
+        for (var i = a.length - 1; i > 0; i--) {
+            var j = Math.floor(rng() * (i + 1));
+            var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+        }
+        return a;
+    }
+
+    /* ── Detect format: new blocks or legacy sections ── */
+    var useBlocks = Array.isArray(config.blocks) && config.blocks.length > 0;
+
+    /* ══════════════════════════════════════════════════════════════
+       NEW FORMAT — Nested blocks → sub-parts → questions
+       ══════════════════════════════════════════════════════════════ */
+
+    function renderHeader(cfg, shuffled) {
+        var html = '';
+
+        /* Centered School Logo, School Name, and Exam Title */
+        html += '<div class="print-header">';
+        if (cfg.logoData) {
+            html += '<div style="text-align:center;margin-bottom:4px">';
+            html += '<img src="' + cfg.logoData + '" class="institute-logo" alt="Logo">';
+            html += '</div>';
+        }
+        html += '  <div class="institute-name">' + escapeHtml(examData.institute_name || '') + '</div>';
+        html += '  <div class="exam-title-header">' + escapeHtml(examData.exam_title || '') + '</div>';
+        html += '</div>';
+
+        /* Single-Line Metadata Strip → Two-Row Layout */
+        var examDateFormatted = formatDate(cfg.examDate || examData.created_at);
+
+        /* Compute total marks from block-level marks (fallback if exam total is 0) */
+        var computedTotalMarks = 0;
+        var blocks = cfg.blocks || [];
+        blocks.forEach(function(b) {
+            computedTotalMarks += parseFloat(b.totalMarks) || 0;
+        });
+        var displayTotalMarks = computedTotalMarks || examData.total_marks || 0;
+
+        html += '<div class="paper-meta-strip">';
+        html += '<table class="meta-table">';
+        html += '<tr>';
+        html += '  <td><strong>Name:</strong> _______________</td>';
+        html += '  <td><strong>Roll No:</strong> __________</td>';
+        html += '  <td><strong>Class:</strong> ' + escapeHtml(className || '') + '</td>';
+        html += '  <td><strong>Subject:</strong> ' + escapeHtml(subjectName || '') + '</td>';
+        html += '</tr>';
+        html += '<tr>';
+        html += '  <td><strong>Total Marks:</strong> ' + displayTotalMarks + '</td>';
+        html += '  <td><strong>Obtained Marks:</strong> _____</td>';
+        html += '  <td><strong>Time Allowed:</strong> ' + escapeHtml(examData.time_allowed || '') + '</td>';
+        html += '  <td><strong>Date:</strong> ' + escapeHtml(examDateFormatted) + '</td>';
+        html += '</tr>';
+        html += '</table>';
+        html += '</div>';
+
+        /* Syllabus note */
+        var sylNote = cfg.syllabusNote || cfg.syllabus_note || '';
+        if (sylNote) {
+            html += '<div class="syllabus-note">' + escapeHtml(sylNote) + '</div>';
+        }
+
+        /* Paper code */
+        if (shuffled) {
+            html += '<div class="paper-code">Paper Code: B</div>';
+        }
+
+        return html;
+    }
+
+    /* ── Marks formula builder ── */
+    function marksFormula(count, attempt, marks) {
+        if (!marks) return '';
+        var effectiveAttempt = attempt && attempt < count ? attempt : count;
+        var total = effectiveAttempt * marks;
+        return '(' + effectiveAttempt + ' × ' + marks + ' = ' + total + ')';
+    }
+
+    /* ── Sub-part heading text ── */
+    function subPartHeadingText(sp, qCount) {
+        var attempt = sp.attempt || qCount;
+        var marks = sp.marks || 1;
+        var formula = marksFormula(qCount, attempt, marks);
+        return formula;
+    }
+
+    /* ── Render MCQ sub-part questions ── */
+    function renderMCQQuestions(orderedIds, shuffled, blockIdx, spIdx) {
+        var html = '<div class="mcq-section">';
+        orderedIds.forEach(function(qid, i) {
+            var q = qMap[qid];
+            if (!q) return;
+
+            var opts = [
+                { letter: 'A', text: q.option_a },
+                { letter: 'B', text: q.option_b },
+                { letter: 'C', text: q.option_c },
+                { letter: 'D', text: q.option_d }
+            ];
+
+            if (shuffled) {
+                var rng = seededRandom(blockIdx * 10000 + spIdx * 1000 + i * 7 + 13);
+                opts = shuffleArray(opts, rng);
+            }
+
+            html += '<div class="mcq-item question-block">';
+            html += '  <div class="mcq-statement">' + toRoman(i) + ' ' + escapeHtml(q.statement) + '</div>';
+            html += '  <div class="mcq-options">';
+            opts.forEach(function(o) {
+                html += '<span class="mcq-option">(' + o.letter + ') ' + escapeHtml(o.text || '') + '</span>';
+            });
+            html += '  </div>';
+            html += '</div>';
+        });
+        html += '</div>';
+        return html;
+    }
+
+    /* ── Render subjective sub-part questions — NO per-question marks ── */
+    function renderSubjectiveQuestions(orderedIds) {
+        var html = '<div class="subjective-section">';
+        orderedIds.forEach(function(qid, i) {
+            var q = qMap[qid];
+            if (!q) return;
+            var isUrdu = q.is_urdu_script;
+            html += '<div class="subjective-item question-block">';
+            html += '  <span class="roman-numeral">' + toRoman(i) + '</span>';
+            html += '  <span class="question-text' + (isUrdu ? ' urdu-text' : '') + '">'
+                  + escapeHtml(q.statement) + '</span>';
+            html += '</div>';
+        });
+        html += '</div>';
+        return html;
+    }
+
+    /* ── Render translation sub-part questions — NO per-question marks ── */
+    function renderTranslationQuestions(orderedIds) {
+        var html = '<div class="translation-section">';
+        orderedIds.forEach(function(qid, i) {
+            var q = qMap[qid];
+            if (!q) return;
+            html += '<div class="translation-block question-block">';
+            html += '  <div class="roman-numeral">' + toRoman(i) + '</div>';
+            if (q.is_urdu_script) {
+                html += '  <div class="urdu-text">' + escapeHtml(q.statement) + '</div>';
+            } else {
+                html += '  <div class="question-text">' + escapeHtml(q.statement) + '</div>';
+            }
+            html += '</div>';
+        });
+        html += '</div>';
+        return html;
+    }
+
+    /* ── Render full exam — NEW block format ── */
+    function renderExamBlocks(cfg, shuffled) {
+        var container = document.getElementById('exam-container');
+        var html = renderHeader(cfg, shuffled);
+        var blocks = cfg.blocks || [];
+        var hadMCQBlock = false;
+
+        blocks.forEach(function(block, blockIdx) {
+            /* Page break: after MCQ-only block, before next non-MCQ block */
+            if (hadMCQBlock) {
+                var hasNonMCQ = (block.subParts || []).some(function(sp) { return sp.type !== 'mcq'; });
+                var hasMCQ = (block.subParts || []).some(function(sp) { return sp.type === 'mcq'; });
+                if (hasNonMCQ || !hasMCQ) {
+                    html += '<div class="page-break-after"></div>';
+                    hadMCQBlock = false;
+                }
+            }
+
+            /* Block heading: Q.1, Q.2, etc. with manual marks */
+            var marksStr = (block.totalMarks !== undefined && block.totalMarks !== '' && block.totalMarks !== null) ? '<span class="block-marks" style="float:right;font-weight:bold">' + escapeHtml(String(block.totalMarks)) + '</span>' : '';
+            html += '<div class="block-heading" style="overflow:hidden">';
+            html += marksStr;
+            html += '<strong>Q.' + (blockIdx + 1) + ':</strong> ';
+            html += escapeHtml(block.heading || '');
+            html += '</div>';
+
+            var subParts = block.subParts || [];
+            subParts.forEach(function(sp, spIdx) {
+                /* Resolve question IDs */
+                var qIds = sp.questionIds || sp.question_ids || [];
+
+                if (shuffled) {
+                    var rng = seededRandom(42 + blockIdx * 100 + spIdx);
+                    qIds = shuffleArray(qIds, rng);
+                }
+
+                /* Render questions by type */
+                if (sp.type === 'mcq') {
+                    html += renderMCQQuestions(qIds, shuffled, blockIdx, spIdx);
+                    hadMCQBlock = true;
+                } else if (sp.type === 'translation_para') {
+                    html += renderTranslationQuestions(qIds);
+                } else {
+                    html += renderSubjectiveQuestions(qIds);
+                }
+            });
+        });
+
+        container.innerHTML = html;
+
+        /* Build answer key */
+        buildAnswerKeyBlocks(cfg, shuffled);
+    }
+
+    /* ── Answer key — NEW block format ── */
+    function buildAnswerKeyBlocks(cfg, shuffled) {
+        var grid = document.getElementById('answer-key-grid');
+        var blocks = cfg.blocks || [];
+        var hasAnyMCQ = false;
+        var html = '';
+
+        blocks.forEach(function(block, blockIdx) {
+            var subParts = block.subParts || [];
+            subParts.forEach(function(sp, spIdx) {
+                if (sp.type !== 'mcq') return;
+                hasAnyMCQ = true;
+
+                var qIds = sp.questionIds || sp.question_ids || [];
+                if (shuffled) {
+                    var rng = seededRandom(42 + blockIdx * 100 + spIdx);
+                    qIds = shuffleArray(qIds, rng);
+                }
+
+                /* Header for this MCQ group */
+                var headerEl = document.querySelector('.answer-key-title');
+                if (headerEl) {
+                    headerEl.textContent = 'TEACHER ANSWER KEY: OBJECTIVE (Q.' + (blockIdx + 1) + ')';
+                }
+
+                qIds.forEach(function(qid, i) {
+                    var q = qMap[qid];
+                    if (!q) return;
+
+                    var correctLetter = q.correct_option || '—';
+
+                    if (shuffled) {
+                        var opts = [
+                            { letter: 'A', text: q.option_a },
+                            { letter: 'B', text: q.option_b },
+                            { letter: 'C', text: q.option_c },
+                            { letter: 'D', text: q.option_d }
+                        ];
+                        var rng2 = seededRandom(blockIdx * 10000 + spIdx * 1000 + i * 7 + 13);
+                        opts = shuffleArray(opts, rng2);
+                        for (var k = 0; k < opts.length; k++) {
+                            if (opts[k].letter === q.correct_option) {
+                                correctLetter = ['A','B','C','D'][k];
+                                break;
+                            }
+                        }
+                    }
+
+                    html += '<span class="key-cell">' + toRoman(i) + ' ' + correctLetter + '</span>';
+                });
+            });
+        });
+
+        if (!hasAnyMCQ) {
+            grid.innerHTML = '<p>No MCQ section found.</p>';
+            return;
+        }
+
+        grid.innerHTML = html;
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       LEGACY FORMAT — Flat sections (backward compatibility)
+       ══════════════════════════════════════════════════════════════ */
+
+    function renderExamLegacy(cfg, shuffled) {
+        var container = document.getElementById('exam-container');
+        var html = renderHeader(cfg, shuffled);
+
+        var sections = cfg.sections || [];
+        sections.forEach(function(sec, sIdx) {
+            if (sIdx > 0 && sections[sIdx - 1].type === 'mcq' && sec.type !== 'mcq') {
+                html += '<div class="page-break-after"></div>';
+            }
+
+            /* Section title */
+            html += '<div class="section-heading">' + escapeHtml(sec.title || ('Section ' + (sIdx + 1))) + '</div>';
+
+            /* Q heading */
+            var qNum = sec.startQ || sec.q_number || (sIdx + 1);
+            html += '<div class="question-heading">';
+            html += '<strong>Q.' + qNum + ':</strong> ' + escapeHtml(sec.heading || '');
+            html += '</div>';
+
+            /* Get ordered questions */
+            var orderedIds = sec.questionIds || sec.question_order || sec.question_ids || [];
+            if (shuffled) {
+                var rng = seededRandom(42 + sIdx);
+                orderedIds = shuffleArray(orderedIds, rng);
+            }
+
+            var marksVal = sec.marks || sec.marks_per_item;
+
+            if (sec.type === 'mcq') {
+                html += renderMCQQuestions(orderedIds, shuffled, sIdx, 0);
+            } else if (sec.type === 'translation_para') {
+                html += renderTranslationQuestions(orderedIds);
+            } else {
+                html += renderSubjectiveQuestions(orderedIds);
+            }
+        });
+
+        container.innerHTML = html;
+
+        /* Build answer key — legacy */
+        buildAnswerKeyLegacy(cfg, shuffled);
+    }
+
+    function buildAnswerKeyLegacy(cfg, shuffled) {
+        var grid = document.getElementById('answer-key-grid');
+        var mcqSection = null;
+        var mcqSectionIdx = -1;
+
+        (cfg.sections || []).forEach(function(sec, idx) {
+            if (sec.type === 'mcq') { mcqSection = sec; mcqSectionIdx = idx; }
+        });
+
+        if (!mcqSection) {
+            grid.innerHTML = '<p>No MCQ section found.</p>';
+            return;
+        }
+
+        var orderedIds = mcqSection.questionIds || mcqSection.question_order || mcqSection.question_ids || [];
+        if (shuffled) {
+            var rng = seededRandom(42 + mcqSectionIdx);
+            orderedIds = shuffleArray(orderedIds, rng);
+        }
+
+        var headerEl = document.querySelector('.answer-key-title');
+        if (headerEl) {
+            var qn = mcqSection.startQ || mcqSection.q_number || 1;
+            headerEl.textContent = 'TEACHER ANSWER KEY: OBJECTIVE (Q.' + qn + ')';
+        }
+
+        var html = '';
+        orderedIds.forEach(function(qid, i) {
+            var q = qMap[qid];
+            if (!q) return;
+
+            var correctLetter = q.correct_option || '—';
+
+            if (shuffled) {
+                var opts = [
+                    { letter: 'A', text: q.option_a },
+                    { letter: 'B', text: q.option_b },
+                    { letter: 'C', text: q.option_c },
+                    { letter: 'D', text: q.option_d }
+                ];
+                var rng2 = seededRandom(mcqSectionIdx * 10000 + 0 * 1000 + i * 7 + 13);
+                opts = shuffleArray(opts, rng2);
+                for (var k = 0; k < opts.length; k++) {
+                    if (opts[k].letter === q.correct_option) {
+                        correctLetter = ['A','B','C','D'][k];
+                        break;
+                    }
+                }
+            }
+
+            html += '<span class="key-cell">' + toRoman(i) + ' ' + correctLetter + '</span>';
+        });
+
+        grid.innerHTML = html;
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       DISPATCHER — pick format and render
+       ══════════════════════════════════════════════════════════════ */
+
+    function renderExam(cfg, shuffled) {
+        if (useBlocks) {
+            renderExamBlocks(cfg, shuffled);
+        } else {
+            renderExamLegacy(cfg, shuffled);
+        }
+    }
+
+    /* ── Initial render ── */
+    renderExam(config, false);
+
+    /* ── Shuffle toggle ── */
+    document.getElementById('shuffle-toggle').addEventListener('change', function() {
+        var isShuffled = this.checked;
+        var label = document.getElementById('paper-code-label');
+        label.textContent = isShuffled ? 'Showing: Paper Code B' : '';
+        renderExam(config, isShuffled);
+
+        /* Maintain answer key visibility */
+        var akToggle = document.getElementById('answer-key-toggle');
+        document.getElementById('answer-key-section').style.display = akToggle.checked ? 'block' : 'none';
+    });
+
+    /* ── Answer key toggle ── */
+    document.getElementById('answer-key-toggle').addEventListener('change', function() {
+        document.getElementById('answer-key-section').style.display = this.checked ? 'block' : 'none';
+    });
+
+    /* ── Auto-print if ?autoprint=1 ── */
+    if (window.location.search.indexOf('autoprint=1') !== -1) {
+        setTimeout(function() { window.print(); }, 600);
+    }
+})();
+</script>
+
+</body>
+</html>

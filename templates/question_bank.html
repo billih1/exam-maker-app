@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% block title %}Question Bank - ExamForge Local{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📚 Question Bank</h1>
+    <p class="text-muted">Add, manage, and organise your curriculum questions</p>
+</div>
+
+<!-- ── Cascading Filter Bar ── -->
+<div class="card mb-3">
+    <div class="filter-bar">
+        <div class="form-group">
+            <label class="form-label" for="class-select">Class</label>
+            <select id="class-select" class="form-select">
+                <option value="">— Select Class —</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="subject-select">Subject</label>
+            <div class="flex gap-1">
+                <select id="subject-select" class="form-select" disabled>
+                    <option value="">— Select Subject —</option>
+                </select>
+                <button id="add-subject-btn" class="btn btn-sm btn-primary" disabled title="Add Subject">➕</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="chapter-select">Chapter</label>
+            <div class="flex gap-1">
+                <select id="chapter-select" class="form-select" disabled>
+                    <option value="">— Select Chapter —</option>
+                </select>
+                <button id="add-chapter-btn" class="btn btn-sm btn-primary" disabled title="Add Chapter">➕</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Category Tabs ── -->
+<div class="tabs" id="category-tabs">
+    <button class="tab active" data-type="mcq">MCQs</button>
+    <button class="tab" data-type="short_q">Short Questions</button>
+    <button class="tab" data-type="translation_para">Translation Paragraphs</button>
+    <button class="tab" data-type="long_q">Long Qs / Letters / Stories</button>
+</div>
+
+<!-- ── Entry Workspace ── -->
+<div id="entry-workspace">
+
+    <!-- A) MCQ Form -->
+    <div id="mcq-form" class="card question-entry-form">
+        <div class="master-statement">Choose the correct option from the following:</div>
+
+        <div class="form-group">
+            <label class="form-label" for="mcq-statement">Question Statement <span class="text-danger">*</span></label>
+            <textarea id="mcq-statement" class="form-textarea" rows="2" placeholder="Enter the MCQ question…"></textarea>
+        </div>
+
+        <div class="mcq-options-row">
+            <div class="form-group">
+                <label class="form-label" for="mcq-opt-a">Option A</label>
+                <input id="mcq-opt-a" type="text" class="form-input" placeholder="Option A">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="mcq-opt-b">Option B</label>
+                <input id="mcq-opt-b" type="text" class="form-input" placeholder="Option B">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="mcq-opt-c">Option C</label>
+                <input id="mcq-opt-c" type="text" class="form-input" placeholder="Option C">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="mcq-opt-d">Option D</label>
+                <input id="mcq-opt-d" type="text" class="form-input" placeholder="Option D">
+            </div>
+        </div>
+
+        <div class="flex gap-2">
+            <div class="form-group">
+                <label class="form-label" for="mcq-correct">Correct Answer</label>
+                <select id="mcq-correct" class="form-select">
+                    <option value="">—</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D">D</option>
+                </select>
+            </div>
+            <div class="form-group" style="align-self:flex-end">
+                <button id="mcq-save-btn" class="btn btn-primary">Save &amp; Add Next ➕</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- B) Short Question Form -->
+    <div id="short-form" class="card question-entry-form" style="display:none">
+        <div class="master-statement">Write short answers to any [X] of the following questions:</div>
+
+        <div class="form-group">
+            <label class="form-label" for="short-statement">Question Statement <span class="text-danger">*</span></label>
+            <textarea id="short-statement" class="form-textarea" rows="2" placeholder="Enter the short question…"></textarea>
+        </div>
+
+        <div class="flex gap-2">
+            <div class="form-group" style="align-self:flex-end">
+                <button id="short-save-btn" class="btn btn-primary">Save Question ➕</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- C) Translation Para Form -->
+    <div id="translation-form" class="card question-entry-form" style="display:none">
+        <div class="master-statement">Translate the following paragraphs into Urdu:</div>
+
+        <div class="form-group">
+            <label class="form-label" for="trans-statement">Paragraph Text <span class="text-danger">*</span></label>
+            <textarea id="trans-statement" class="form-textarea" rows="5" placeholder="Enter the full translation paragraph…"></textarea>
+        </div>
+
+        <div class="flex gap-2">
+            <div class="form-group">
+                <label class="form-label" for="trans-ref">Reference / Tag</label>
+                <input id="trans-ref" type="text" class="form-input" placeholder="e.g. Paragraph 1 (Page 24)">
+            </div>
+            <div class="form-group flex gap-1" style="align-items:center;align-self:flex-end">
+                <input id="trans-urdu" type="checkbox">
+                <label for="trans-urdu" class="form-label" style="margin:0">Urdu Script</label>
+            </div>
+            <div class="form-group" style="align-self:flex-end">
+                <button id="trans-save-btn" class="btn btn-primary">Add Paragraph ➕</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- D) Long Question / Letter / Story Form -->
+    <div id="long-form" class="card question-entry-form" style="display:none">
+        <div class="master-statement">Answer the following in detail:</div>
+
+        <div class="flex gap-2">
+            <div class="form-group">
+                <label class="form-label" for="long-subtype">Type</label>
+                <select id="long-subtype" class="form-select">
+                    <option value="long_q">Long Question</option>
+                    <option value="letter">Letter</option>
+                    <option value="story">Story</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="long-statement">Title / Statement <span class="text-danger">*</span></label>
+            <textarea id="long-statement" class="form-textarea" rows="3" placeholder="Enter the essay/letter/story prompt…"></textarea>
+        </div>
+
+        <div class="flex gap-2">
+            <div class="form-group" style="align-self:flex-end">
+                <button id="long-save-btn" class="btn btn-primary">Save ➕</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Questions Table ── -->
+<div class="card mt-3">
+    <h3 class="mb-2">Questions in This Chapter</h3>
+    <div id="questions-table-wrap">
+        <table class="table" id="questions-table">
+            <thead>
+                <tr>
+                    <th style="width:40px">#</th>
+                    <th>Statement</th>
+                    <th style="width:120px">Type</th>
+                    <th style="width:130px">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="questions-tbody">
+                <!-- populated by JS -->
+            </tbody>
+        </table>
+        <div id="questions-empty" class="empty-state">
+            <p>No questions yet. Select a class, subject, and chapter above, then start adding questions.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ════════ Modals ════════ -->
+
+<!-- Add Subject Modal -->
+<div id="subject-modal" class="modal-overlay" style="display:none">
+    <div class="modal">
+        <h3>Add New Subject</h3>
+        <div class="form-group">
+            <label class="form-label" for="modal-subject-name">Subject Name</label>
+            <input id="modal-subject-name" type="text" class="form-input" placeholder="e.g. English, Physics">
+        </div>
+        <div class="flex gap-1" style="justify-content:flex-end">
+            <button class="btn" onclick="closeModal('subject-modal')">Cancel</button>
+            <button id="modal-subject-save" class="btn btn-primary">Save Subject</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Chapter Modal -->
+<div id="chapter-modal" class="modal-overlay" style="display:none">
+    <div class="modal">
+        <h3>Add New Chapter</h3>
+        <div class="form-group">
+            <label class="form-label" for="modal-chapter-no">Chapter Number</label>
+            <input id="modal-chapter-no" type="number" class="form-input" min="1" value="1">
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="modal-chapter-title">Chapter Title</label>
+            <input id="modal-chapter-title" type="text" class="form-input" placeholder="e.g. The Saviour of Mankind">
+        </div>
+        <div class="flex gap-1" style="justify-content:flex-end">
+            <button class="btn" onclick="closeModal('chapter-modal')">Cancel</button>
+            <button id="modal-chapter-save" class="btn btn-primary">Save Chapter</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Question Modal -->
+<div id="edit-modal" class="modal-overlay" style="display:none">
+    <div class="modal" style="max-width:600px">
+        <h3>Edit Question</h3>
+        <input type="hidden" id="edit-id">
+        <input type="hidden" id="edit-type">
+
+        <div class="form-group">
+            <label class="form-label" for="edit-statement">Statement</label>
+            <textarea id="edit-statement" class="form-textarea" rows="3"></textarea>
+        </div>
+
+        <div id="edit-mcq-fields">
+            <div class="mcq-options-row">
+                <div class="form-group">
+                    <label class="form-label">Option A</label>
+                    <input id="edit-opt-a" type="text" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Option B</label>
+                    <input id="edit-opt-b" type="text" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Option C</label>
+                    <input id="edit-opt-c" type="text" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Option D</label>
+                    <input id="edit-opt-d" type="text" class="form-input">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Correct Answer</label>
+                <select id="edit-correct" class="form-select">
+                    <option value="">—</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D">D</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="flex gap-2">
+            <div class="form-group flex gap-1" style="align-items:center;align-self:flex-end">
+                <input id="edit-urdu" type="checkbox">
+                <label for="edit-urdu" class="form-label" style="margin:0">Urdu Script</label>
+            </div>
+        </div>
+
+        <div class="flex gap-1" style="justify-content:flex-end">
+            <button class="btn" onclick="closeModal('edit-modal')">Cancel</button>
+            <button id="edit-save-btn" class="btn btn-primary">Update Question</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/bank.js') }}"></script>
+{% endblock %}

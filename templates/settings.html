@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - ExamForge Local{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>⚙ Settings</h1>
+    <p class="text-muted">Configure institute defaults and manage your database</p>
+</div>
+
+<!-- Institute Defaults -->
+<div class="card mb-3">
+    <h2 style="margin-top:0;">🏫 Institute Defaults</h2>
+    <p class="text-muted">These values will be pre-filled when creating new exam papers.</p>
+
+    <div class="form-group">
+        <label class="form-label" for="setting-institute">Institute Name</label>
+        <input type="text" id="setting-institute" class="form-input" placeholder="e.g., The Educators / Punjab College">
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="setting-exam-title">Default Exam Title</label>
+        <input type="text" id="setting-exam-title" class="form-input" placeholder="e.g., Midterm Examination 2026">
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="setting-time">Default Time Allowed</label>
+        <input type="text" id="setting-time" class="form-input" placeholder="e.g., 2 Hours 30 Minutes">
+    </div>
+
+    <button class="btn btn-primary" id="save-defaults-btn">💾 Save Defaults</button>
+</div>
+
+<!-- Database Management -->
+<div class="card mb-3">
+    <h2 style="margin-top:0;">🗄 Database Management</h2>
+    <p class="text-muted">Backup or restore your entire question bank and saved papers.</p>
+
+    <div class="flex gap-2" style="flex-wrap:wrap; align-items:flex-start;">
+        <div class="card" style="flex:1; min-width:260px; background:var(--bg);">
+            <h3 style="margin-top:0;">📥 Download Backup</h3>
+            <p class="text-muted" style="font-size:0.9rem;">Save a copy of your entire database to a file.</p>
+            <button class="btn btn-primary" id="backup-btn">📥 Download Backup</button>
+        </div>
+
+        <div class="card" style="flex:1; min-width:260px; background:var(--bg);">
+            <h3 style="margin-top:0;">📤 Restore from Backup</h3>
+            <p class="text-muted" style="font-size:0.9rem;">
+                ⚠ <strong>Warning:</strong> Restoring a backup will replace all current data.
+            </p>
+            <div class="form-group" style="margin-bottom:8px;">
+                <input type="file" id="restore-file" accept=".db" class="form-input">
+            </div>
+            <button class="btn btn-danger" id="restore-btn">📤 Restore Database</button>
+        </div>
+    </div>
+</div>
+
+<!-- About -->
+<div class="card mb-3">
+    <h2 style="margin-top:0;">ℹ About</h2>
+    <table class="table" style="max-width:400px;">
+        <tr><td><strong>Application</strong></td><td>ExamForge Local</td></tr>
+        <tr><td><strong>Version</strong></td><td>1.0</td></tr>
+        <tr><td><strong>Mode</strong></td><td><span class="badge badge-success">● Offline</span> — No internet required</td></tr>
+        <tr><td><strong>Database</strong></td><td>SQLite 3 (exam_bank.db)</td></tr>
+    </table>
+    <p class="text-muted" style="font-size:0.85rem; margin-top:12px;">
+        100% Offline — This application runs entirely on your local machine.<br>
+        No data is ever sent to the internet.
+    </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var SETTING_KEYS = [
+        { key: 'institute_name', inputId: 'setting-institute' },
+        { key: 'exam_title',     inputId: 'setting-exam-title' },
+        { key: 'time_allowed',   inputId: 'setting-time' }
+    ];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSettings();
+
+        document.getElementById('save-defaults-btn').addEventListener('click', saveDefaults);
+        document.getElementById('backup-btn').addEventListener('click', downloadBackup);
+        document.getElementById('restore-btn').addEventListener('click', restoreBackup);
+    });
+
+    function loadSettings() {
+        SETTING_KEYS.forEach(function(s) {
+            fetch('/api/settings/' + s.key)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data && data.value !== undefined && data.value !== null) {
+                        document.getElementById(s.inputId).value = data.value;
+                    }
+                })
+                .catch(function() {
+                    // Setting doesn't exist yet — leave field empty
+                });
+        });
+    }
+
+    function saveDefaults() {
+        var promises = SETTING_KEYS.map(function(s) {
+            var val = document.getElementById(s.inputId).value.trim();
+            return fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: s.key, value: val })
+            });
+        });
+
+        Promise.all(promises)
+            .then(function() {
+                showToast('Settings saved successfully');
+            })
+            .catch(function(err) {
+                console.error(err);
+                showToast('Failed to save settings', 'error');
+            });
+    }
+
+    function downloadBackup() {
+        window.location = '/api/backup';
+    }
+
+    function restoreBackup() {
+        var fileInput = document.getElementById('restore-file');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            showToast('Please select a .db file first', 'error');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to restore this backup?\n\nThis will REPLACE all current data (questions, subjects, papers, settings) with the contents of the backup file. This cannot be undone.')) {
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        fetch('/api/restore', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) {
+                showToast('Restore failed: ' + data.error, 'error');
+            } else {
+                showToast('Database restored successfully! Reloading...', 'success');
+                setTimeout(function() { window.location.reload(); }, 1500);
+            }
+        })
+        .catch(function(err) {
+            console.error(err);
+            showToast('Failed to restore database', 'error');
+        });
+    }
+})();
+</script>
+{% endblock %}

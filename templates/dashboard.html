@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ExamForge Local{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📊 Dashboard</h1>
+    <p class="text-muted">Quick overview of your exam bank</p>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card" id="stat-questions">
+        <div class="stat-icon">📝</div>
+        <div class="stat-value">—</div>
+        <div class="stat-label">Questions in Bank</div>
+    </div>
+    <div class="stat-card" id="stat-subjects">
+        <div class="stat-icon">📚</div>
+        <div class="stat-value">—</div>
+        <div class="stat-label">Subjects</div>
+    </div>
+    <div class="stat-card" id="stat-papers">
+        <div class="stat-icon">🗂</div>
+        <div class="stat-value">—</div>
+        <div class="stat-label">Saved Papers</div>
+    </div>
+    <div class="stat-card" id="stat-classes">
+        <div class="stat-icon">🎓</div>
+        <div class="stat-value">—</div>
+        <div class="stat-label">Classes</div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card mt-3">
+    <div class="card-header">
+        <h2>Quick Actions</h2>
+    </div>
+    <div class="card-body">
+        <div class="flex gap-2">
+            <a href="/question-bank" class="btn btn-primary">➕ Add Questions</a>
+            <a href="/exam-maker" class="btn btn-primary">📝 Create Exam</a>
+            <a href="/settings" class="btn btn-primary">⚙ Settings</a>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Papers -->
+<div class="card mt-3">
+    <div class="card-header">
+        <h2>Recent Papers</h2>
+    </div>
+    <div class="card-body">
+        <table class="table" id="recent-papers-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Subject</th>
+                    <th>Total Marks</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="recent-papers-body">
+                <tr id="papers-empty-row">
+                    <td colspan="5" class="text-center text-muted" style="padding:2rem;">
+                        No saved papers yet. <a href="/exam-maker">Create your first exam &rarr;</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    /* ---------- helpers ---------- */
+    function setStatValue(cardId, value) {
+        var card = document.getElementById(cardId);
+        if (card) {
+            card.querySelector('.stat-value').textContent = value;
+        }
+    }
+
+    function formatDate(dtStr) {
+        if (!dtStr) return '—';
+        var d = new Date(dtStr);
+        if (isNaN(d.getTime())) return dtStr;
+        var day   = String(d.getDate()).padStart(2, '0');
+        var month = d.toLocaleString('en-US', { month: 'short' });
+        var year  = d.getFullYear();
+        return day + ' ' + month + ' ' + year;
+    }
+
+    /* ---------- load stats ---------- */
+    fetch('/api/stats')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            setStatValue('stat-questions', data.total_questions  ?? 0);
+            setStatValue('stat-subjects',  data.total_subjects   ?? 0);
+            setStatValue('stat-papers',    data.total_papers     ?? 0);
+            setStatValue('stat-classes',   data.total_classes    ?? 0);
+        })
+        .catch(function () {
+            /* Fallback: hit individual endpoints */
+            fetch('/api/classes').then(function (r) { return r.json(); })
+                .then(function (d) { setStatValue('stat-classes', Array.isArray(d) ? d.length : 0); })
+                .catch(function () { setStatValue('stat-classes', 0); });
+
+            setStatValue('stat-questions', '?');
+            setStatValue('stat-subjects',  '?');
+            setStatValue('stat-papers',    '?');
+        });
+
+    /* ---------- load recent papers ---------- */
+    fetch('/api/saved-exams')
+        .then(function (r) { return r.json(); })
+        .then(function (exams) {
+            if (!Array.isArray(exams) || exams.length === 0) return;
+
+            var tbody = document.getElementById('recent-papers-body');
+            var emptyRow = document.getElementById('papers-empty-row');
+            if (emptyRow) emptyRow.remove();
+
+            /* Show only last 5, newest first (API may already sort) */
+            var recent = exams.slice(-5).reverse();
+            if (exams.length > 5) {
+                recent = exams.slice(0, 5);
+            }
+
+            recent.forEach(function (exam) {
+                var tr = document.createElement('tr');
+
+                var tdTitle = document.createElement('td');
+                tdTitle.textContent = exam.exam_title || '(untitled)';
+
+                var tdSubject = document.createElement('td');
+                tdSubject.textContent = exam.subject_name || ('Subject #' + exam.subject_id);
+
+                var tdMarks = document.createElement('td');
+                tdMarks.textContent = exam.total_marks;
+
+                var tdDate = document.createElement('td');
+                tdDate.textContent = formatDate(exam.created_at);
+
+                var tdActions = document.createElement('td');
+                var printLink = document.createElement('a');
+                printLink.href = '/print-paper/' + exam.id;
+                printLink.className = 'btn btn-sm btn-primary';
+                printLink.textContent = '🖨 Print';
+                tdActions.appendChild(printLink);
+
+                tr.appendChild(tdTitle);
+                tr.appendChild(tdSubject);
+                tr.appendChild(tdMarks);
+                tr.appendChild(tdDate);
+                tr.appendChild(tdActions);
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(function (err) {
+            console.error('Failed to load recent papers:', err);
+        });
+});
+</script>
+{% endblock %}

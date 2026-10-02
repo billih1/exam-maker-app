@@ -1,0 +1,744 @@
+/* ============================================================
+   print.css — Board-Standard A4 Exam Paper Print Stylesheet
+   ExamForge Local — 100% Offline Exam Paper Maker
+   ============================================================ */
+
+/* --- Bundled Local Urdu Nastaliq Font --- */
+@font-face {
+    font-family: "Jameel Noori Nastaleeq";
+    src: url("../fonts/JameelNooriNastaleeq.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* ============================================================
+   SCREEN STYLES — Print Preview in Browser
+   ============================================================ */
+@media screen {
+    .exam-container {
+        max-width: 210mm;
+        margin: 10px auto;
+        padding: 5mm;
+        background: #ffffff;
+        box-shadow: 0 2px 20px rgba(0, 0, 0, 0.12);
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 11pt;
+        color: #000000;
+        line-height: 1.4;
+        min-height: 297mm;
+        box-sizing: border-box;
+    }
+
+    .exam-container .print-header {
+        text-align: center;
+        margin-bottom: 6px;
+    }
+
+    .exam-container .print-header .institute-logo {
+        max-height: 75px;
+        display: inline-block;
+        margin-bottom: 4px;
+    }
+
+    .exam-container .print-header .institute-name {
+        font-size: 18pt;
+        font-weight: bold;
+        font-family: "Times New Roman", Times, serif;
+        margin: 0 0 2px 0;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .exam-container .print-header .exam-title-header {
+        font-size: 13pt;
+        font-weight: bold;
+        font-family: "Times New Roman", Times, serif;
+        margin: 2px 0 6px 0;
+        letter-spacing: 0.3px;
+    }
+
+    .exam-container .paper-meta-strip {
+        padding: 4px 0;
+        margin: 6px 0 10px 0;
+        font-size: 10pt;
+        font-family: "Times New Roman", Times, serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .exam-container .paper-meta-strip table.meta-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: none;
+    }
+
+    .exam-container .paper-meta-strip table.meta-table td {
+        border: none;
+        padding: 3px 2px;
+        white-space: nowrap;
+        width: 25%;
+        font-size: 10pt;
+    }
+
+    /* Section headings */
+    .exam-container .section-heading {
+        font-weight: bold;
+        font-size: 12pt;
+        margin: 16px 0 8px 0;
+        padding-bottom: 3px;
+    }
+
+    .exam-container .section-heading .marks-info {
+        font-weight: normal;
+        font-size: 10.5pt;
+        float: right;
+    }
+
+    /* Question heading (Q.1: Attempt any…) */
+    .exam-container .question-heading {
+        font-size: 11pt;
+        margin: 4px 0 8px 0;
+    }
+
+    /* MCQ layout */
+    .exam-container .mcq-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 20px;
+    }
+
+    .exam-container .mcq-item {
+        margin-bottom: 6px;
+        page-break-inside: avoid;
+    }
+
+    .exam-container .mcq-item .mcq-statement {
+        font-size: 11pt;
+        margin-bottom: 2px;
+    }
+
+    .exam-container .mcq-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 16px;
+        padding-left: 20px;
+        font-size: 10.5pt;
+    }
+
+    .exam-container .mcq-options .mcq-option {
+        min-width: 80px;
+        white-space: nowrap;
+    }
+
+    /* Subjective questions */
+    .exam-container .subjective-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 6px;
+        page-break-inside: avoid;
+    }
+
+    .exam-container .subjective-item .roman-numeral {
+        min-width: 36px;
+        font-size: 11pt;
+        flex-shrink: 0;
+    }
+
+    .exam-container .subjective-item .question-text {
+        flex: 1;
+        font-size: 11pt;
+    }
+
+    .exam-container .subjective-item .item-marks {
+        min-width: 36px;
+        text-align: right;
+        font-size: 10pt;
+        flex-shrink: 0;
+        font-weight: bold;
+    }
+
+    /* Translation paragraphs */
+    .exam-container .translation-block {
+        margin-bottom: 10px;
+        padding: 6px 0;
+        page-break-inside: avoid;
+    }
+
+    .exam-container .translation-block .para-numeral {
+        font-weight: bold;
+        margin-bottom: 3px;
+    }
+
+    .exam-container .translation-block .para-text {
+        text-align: justify;
+        line-height: 1.6;
+        font-size: 11pt;
+    }
+
+    /* Urdu / RTL */
+    .exam-container .urdu-text {
+        direction: rtl;
+        text-align: right;
+        font-family: "Jameel Noori Nastaleeq", "Noto Nastaliq Urdu", serif;
+        font-size: 14pt;
+        line-height: 2;
+    }
+
+    /* Answer key */
+    .exam-container .answer-key-box {
+        border: 2px solid #000;
+        padding: 10px 14px;
+        margin-top: 20px;
+        page-break-inside: avoid;
+    }
+
+    .exam-container .answer-key-box .answer-key-title {
+        text-align: center;
+        font-weight: bold;
+        font-size: 12pt;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 1px solid #000;
+        padding-bottom: 4px;
+    }
+
+    .exam-container .answer-key-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px 8px;
+        font-size: 10.5pt;
+        font-family: "Courier New", Courier, monospace;
+    }
+
+    .exam-container .answer-key-grid .key-cell {
+        white-space: nowrap;
+        padding: 2px 4px;
+    }
+
+    /* Question block generic */
+    .exam-container .question-block {
+        margin-bottom: 8px;
+    }
+
+    /* Page break marker in preview */
+    .exam-container .page-break-after {
+        border-bottom: 2px dashed #999;
+        margin: 16px 0;
+        padding-bottom: 16px;
+    }
+
+    /* Code labels (Code A / Code B) */
+    .exam-container .paper-code {
+        text-align: right;
+        font-weight: bold;
+        font-size: 12pt;
+        margin-bottom: 4px;
+    }
+
+    /* Note / syllabus line */
+    .exam-container .syllabus-note {
+        font-size: 10pt;
+        font-style: italic;
+        text-align: center;
+        margin-bottom: 8px;
+        color: #333;
+    }
+
+    /* Instruction note under section heading */
+    .exam-container .section-instruction {
+        font-size: 10.5pt;
+        font-style: italic;
+        margin-bottom: 8px;
+    }
+
+    /* Separator line between sections */
+    .exam-container .section-divider {
+        border: none;
+        border-top: 1px solid #000;
+        margin: 12px 0;
+    }
+
+    /* Block headings (new nested format) */
+    .exam-container .block-heading {
+        font-weight: bold;
+        font-size: 12pt;
+        margin: 16px 0 6px 0;
+        padding-bottom: 3px;
+    }
+
+    /* Sub-part headings with marks formula */
+    .exam-container .subpart-heading {
+        font-size: 11pt;
+        margin: 6px 0 8px 0;
+        font-weight: bold;
+    }
+
+    .exam-container .subpart-formula {
+        font-weight: normal;
+        font-size: 10.5pt;
+        float: right;
+        font-style: italic;
+    }
+
+    /* Institute logo */
+    .exam-container .institute-logo {
+        max-height: 80px;
+        display: inline-block;
+        margin-bottom: 6px;
+    }
+
+    /* Student info table */
+    .exam-container .student-info-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 8px;
+        font-size: 11pt;
+    }
+
+    .exam-container .student-info-table td {
+        border: 1px solid #000;
+        padding: 4px 8px;
+    }
+}
+
+/* ============================================================
+   PRINT STYLES — Actual Printing / Save-as-PDF
+   ============================================================ */
+@media print {
+    /* --- Page setup --- */
+    @page {
+        size: A4 portrait;
+        margin: 5mm;
+    }
+
+    /* --- Hide ALL web interface elements --- */
+    .sidebar,
+    .navbar,
+    .nav-link,
+    .btn,
+    .no-print,
+    .action-buttons,
+    .summary-bar,
+    .filter-bar,
+    .tabs,
+    .tab,
+    .preview-controls,
+    .reorder-buttons,
+    .reorder-btn,
+    .modal,
+    .modal-overlay,
+    .alert,
+    .toast,
+    .back-link,
+    .print-trigger,
+    .screen-only {
+        display: none !important;
+    }
+
+    /* --- Base document --- */
+    html {
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background: #ffffff !important;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 11pt;
+        color: #000000;
+        line-height: 1.4;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* --- Main container --- */
+    .exam-container {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        background: #ffffff !important;
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+    }
+
+    /* --- Page break controls --- */
+    .question-block {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        margin-bottom: 8px;
+    }
+
+    .page-break-after {
+        page-break-after: always;
+        break-after: page;
+        border-bottom: none;
+    }
+
+    .page-break-before {
+        page-break-before: always;
+        break-before: page;
+    }
+
+    .section-heading {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+
+    /* --- Print Header --- */
+    .print-header {
+        text-align: center;
+        margin-bottom: 6px;
+    }
+
+    .print-header .institute-logo {
+        max-height: 75px;
+        display: inline-block;
+        margin-bottom: 4px;
+    }
+
+    .print-header .institute-name {
+        font-size: 18pt;
+        font-weight: bold;
+        font-family: "Times New Roman", Times, serif;
+        margin: 0 0 2px 0;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .print-header .exam-title-header {
+        font-size: 13pt;
+        font-weight: bold;
+        font-family: "Times New Roman", Times, serif;
+        margin: 2px 0 6px 0;
+        letter-spacing: 0.3px;
+    }
+
+    /* --- Single-Line Metadata Strip --- */
+    .paper-meta-strip {
+        padding: 4px 0;
+        margin: 6px 0 10px 0;
+        font-size: 10pt;
+        font-family: "Times New Roman", Times, serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .paper-meta-strip table.meta-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: none;
+    }
+
+    .paper-meta-strip table.meta-table td {
+        border: none;
+        padding: 3px 2px;
+        white-space: nowrap;
+        width: 25%;
+        font-size: 10pt;
+    }
+
+    /* --- Paper Code (Code A / Code B) --- */
+    .paper-code {
+        text-align: right;
+        font-weight: bold;
+        font-size: 12pt;
+        margin-bottom: 4px;
+    }
+
+    /* --- Syllabus Note --- */
+    .syllabus-note {
+        font-size: 10pt;
+        font-style: italic;
+        text-align: center;
+        margin-bottom: 8px;
+    }
+
+    /* --- Section Headings --- */
+    .section-heading {
+        font-weight: bold;
+        font-size: 12pt;
+        margin: 16px 0 8px 0;
+        padding-bottom: 3px;
+    }
+
+    .section-heading .marks-info {
+        font-weight: normal;
+        font-size: 10.5pt;
+        float: right;
+    }
+
+    /* Question heading (Q.1: Attempt any…) */
+    .question-heading {
+        font-size: 11pt;
+        margin: 4px 0 8px 0;
+    }
+
+    .section-instruction {
+        font-size: 10.5pt;
+        font-style: italic;
+        margin-bottom: 8px;
+    }
+
+    /* --- Section Divider --- */
+    .section-divider {
+        border: none;
+        border-top: 1px solid #000;
+        margin: 12px 0;
+    }
+
+    /* =========================================
+       MCQ Section — Two-Column Grid Layout
+       ========================================= */
+    .mcq-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 20px;
+    }
+
+    .mcq-item {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        margin-bottom: 6px;
+    }
+
+    .mcq-item .mcq-statement {
+        font-size: 11pt;
+        margin-bottom: 2px;
+    }
+
+    .mcq-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 16px;
+        padding-left: 20px;
+        font-size: 10.5pt;
+    }
+
+    .mcq-options .mcq-option {
+        min-width: 80px;
+        white-space: nowrap;
+    }
+
+    /* Single-column MCQ fallback (for long statements) */
+    .mcq-section.single-col {
+        grid-template-columns: 1fr;
+    }
+
+    /* =========================================
+       Subjective Questions
+       ========================================= */
+    .subjective-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 6px;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .subjective-item .roman-numeral {
+        min-width: 36px;
+        font-size: 11pt;
+        flex-shrink: 0;
+    }
+
+    .subjective-item .question-text {
+        flex: 1;
+        font-size: 11pt;
+        text-align: justify;
+    }
+
+    .subjective-item .item-marks {
+        min-width: 36px;
+        text-align: right;
+        font-size: 10pt;
+        flex-shrink: 0;
+        font-weight: bold;
+    }
+
+    /* =========================================
+       Translation Paragraphs
+       ========================================= */
+    .translation-block {
+        margin-bottom: 10px;
+        padding: 6px 0;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .translation-block .para-numeral {
+        font-weight: bold;
+        margin-bottom: 3px;
+        font-size: 11pt;
+    }
+
+    .translation-block .para-text {
+        text-align: justify;
+        line-height: 1.6;
+        font-size: 11pt;
+    }
+
+    /* --- Urdu / RTL Text --- */
+    .urdu-text {
+        direction: rtl;
+        text-align: right;
+        font-family: "Jameel Noori Nastaleeq", "Noto Nastaliq Urdu", serif;
+        font-size: 14pt;
+        line-height: 2;
+    }
+
+    /* =========================================
+       Long Questions / Letters / Stories
+       ========================================= */
+    .long-question-item {
+        margin-bottom: 10px;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .long-question-item .lq-numeral {
+        font-weight: bold;
+        margin-bottom: 2px;
+    }
+
+    .long-question-item .lq-text {
+        font-size: 11pt;
+        margin-left: 20px;
+    }
+
+    .long-question-item .lq-marks {
+        text-align: right;
+        font-weight: bold;
+        font-size: 10pt;
+    }
+
+    /* =========================================
+       Teacher Answer Key
+       ========================================= */
+    .answer-key-box {
+        border: 2px solid #000;
+        padding: 10px 14px;
+        margin-top: 20px;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .answer-key-box .answer-key-title {
+        text-align: center;
+        font-weight: bold;
+        font-size: 12pt;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 1px solid #000;
+        padding-bottom: 4px;
+    }
+
+    .answer-key-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px 8px;
+        font-size: 10.5pt;
+        font-family: "Courier New", Courier, monospace;
+    }
+
+    .answer-key-grid .key-cell {
+        white-space: nowrap;
+        padding: 2px 4px;
+    }
+
+    /* Separator between key columns */
+    .answer-key-grid .key-cell:not(:last-child) {
+        border-right: 1px solid #666;
+    }
+
+    /* =========================================
+       Utility: Print-Specific Overrides
+       ========================================= */
+    a {
+        color: #000 !important;
+        text-decoration: none !important;
+    }
+
+    /* Ensure no orphan headings */
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+
+    /* Keep question + answer key together */
+    .question-block + .answer-key-box {
+        page-break-before: avoid;
+    }
+
+    /* Prevent blank trailing pages */
+    .exam-container > *:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    /* Ensure tables don't split badly */
+    table {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    /* =========================================
+       Block / Sub-Part Headings (new format)
+       ========================================= */
+    .block-heading {
+        font-weight: bold;
+        font-size: 12pt;
+        margin: 16px 0 6px 0;
+        padding-bottom: 3px;
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+
+    .subpart-heading {
+        font-size: 11pt;
+        margin: 6px 0 8px 0;
+        font-weight: bold;
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+
+    .subpart-formula {
+        font-weight: normal;
+        font-size: 10.5pt;
+        float: right;
+        font-style: italic;
+    }
+
+    /* Institute logo */
+    .institute-logo {
+        max-height: 80px;
+        display: inline-block;
+        margin-bottom: 6px;
+    }
+
+    /* Student info */
+    .student-info-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 8px;
+        font-size: 11pt;
+    }
+
+    .student-info-table td {
+        border: 1px solid #000;
+        padding: 4px 8px;
+    }
+}

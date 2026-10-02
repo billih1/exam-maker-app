@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Saved Papers - ExamForge Local{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🗂 Saved Papers</h1>
+    <p class="text-muted">Archive of previously generated exam papers</p>
+</div>
+
+<div class="card mb-3">
+    <div class="filter-bar">
+        <div class="form-group" style="flex:1; margin-bottom:0;">
+            <input type="text" id="search-papers" class="form-input" placeholder="🔍 Search papers by title...">
+        </div>
+        <div class="form-group" style="width:200px; margin-bottom:0;">
+            <select id="sort-papers" class="form-select">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="title">Title A–Z</option>
+                <option value="marks">Total Marks ↓</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<div id="papers-list"></div>
+
+<div id="empty-state" class="empty-state" style="display:none;">
+    <div style="font-size:3rem;">🗂</div>
+    <h3>No Saved Papers Yet</h3>
+    <p class="text-muted">Papers you create in the Exam Maker will appear here.</p>
+    <a href="/exam-maker" class="btn btn-primary">📝 Create Your First Exam</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    let allPapers = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadPapers();
+
+        document.getElementById('search-papers').addEventListener('input', filterAndRender);
+        document.getElementById('sort-papers').addEventListener('change', filterAndRender);
+    });
+
+    function loadPapers() {
+        fetch('/api/saved-exams')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                allPapers = Array.isArray(data) ? data : (data.exams || []);
+                filterAndRender();
+            })
+            .catch(function(err) {
+                console.error('Failed to load papers:', err);
+                showToast('Failed to load saved papers', 'error');
+            });
+    }
+
+    function filterAndRender() {
+        var query = document.getElementById('search-papers').value.toLowerCase().trim();
+        var sortBy = document.getElementById('sort-papers').value;
+
+        var filtered = allPapers.filter(function(p) {
+            if (!query) return true;
+            return (p.exam_title || '').toLowerCase().indexOf(query) !== -1;
+        });
+
+        filtered.sort(function(a, b) {
+            switch (sortBy) {
+                case 'newest':
+                    return (b.created_at || '').localeCompare(a.created_at || '');
+                case 'oldest':
+                    return (a.created_at || '').localeCompare(b.created_at || '');
+                case 'title':
+                    return (a.exam_title || '').localeCompare(b.exam_title || '');
+                case 'marks':
+                    return (b.total_marks || 0) - (a.total_marks || 0);
+                default:
+                    return 0;
+            }
+        });
+
+        renderPapers(filtered);
+    }
+
+    function renderPapers(papers) {
+        var container = document.getElementById('papers-list');
+        var emptyState = document.getElementById('empty-state');
+
+        if (papers.length === 0) {
+            container.innerHTML = '';
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+        var html = '';
+        papers.forEach(function(p) {
+            var dateStr = formatDate(p.created_at);
+            html += '<div class="card paper-list-item mb-2" data-id="' + p.id + '">'
+                + '<div class="flex flex-between" style="align-items:flex-start;">'
+                + '  <div style="flex:1;">'
+                + '    <h3 style="margin:0 0 4px 0;">' + escapeHtml(p.exam_title || 'Untitled') + '</h3>'
+                + '    <div class="text-muted" style="font-size:0.9rem;">'
+                + '      ' + escapeHtml(p.subject_name || p.institute_name || '') + ''
+                + '      <span class="badge" style="margin-left:8px;">' + (p.total_marks || 0) + ' Marks</span>'
+                + '    </div>'
+                + '    <div class="text-muted" style="font-size:0.85rem; margin-top:4px;">📅 ' + dateStr + '</div>'
+                + '  </div>'
+                + '  <div class="flex gap-1">'
+                + '    <a href="/print-paper/' + p.id + '" class="btn btn-sm">👁 View</a>'
+                + '    <a href="/print-paper/' + p.id + '?autoprint=1" class="btn btn-sm btn-primary">🖨 Print</a>'
+                + '    <button class="btn btn-sm" onclick="duplicatePaper(' + p.id + ')">📋 Duplicate</button>'
+                + '    <button class="btn btn-sm btn-danger" onclick="deletePaper(' + p.id + ')">🗑 Delete</button>'
+                + '  </div>'
+                + '</div>'
+                + '</div>';
+        });
+        container.innerHTML = html;
+    }
+
+    function formatDate(ts) {
+        if (!ts) return '—';
+        try {
+            var d = new Date(ts);
+            if (isNaN(d.getTime())) return ts;
+            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        } catch(e) {
+            return ts;
+        }
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    window.deletePaper = function(id) {
+        if (!confirm('Are you sure you want to delete this paper? This cannot be undone.')) return;
+        fetch('/api/saved-exams/' + id, { method: 'DELETE' })
+            .then(function(r) { return r.json(); })
+            .then(function() {
+                showToast('Paper deleted successfully');
+                loadPapers();
+            })
+            .catch(function(err) {
+                console.error(err);
+                showToast('Failed to delete paper', 'error');
+            });
+    };
+
+    window.duplicatePaper = function(id) {
+        fetch('/api/saved-exams/' + id)
+            .then(function(r) { return r.json(); })
+            .then(function(exam) {
+                var payload = {
+                    subject_id: exam.subject_id,
+                    exam_title: (exam.exam_title || 'Untitled') + ' (Copy)',
+                    institute_name: exam.institute_name || '',
+                    time_allowed: exam.time_allowed || '',
+                    total_marks: exam.total_marks || 0,
+                    config_json: exam.config_json || '{}'
+                };
+
+                return fetch('/api/save-exam', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            })
+            .then(function(r) { return r.json(); })
+            .then(function() {
+                showToast('Paper duplicated successfully');
+                loadPapers();
+            })
+            .catch(function(err) {
+                console.error(err);
+                showToast('Failed to duplicate paper', 'error');
+            });
+    };
+})();
+</script>
+{% endblock %}

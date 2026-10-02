@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ExamForge Local{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Fixed Left Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <span class="brand-name">ExamForge Local</span>
+            <span class="offline-badge"><span class="offline-dot"></span> Offline Mode</span>
+        </div>
+        <nav class="nav-links">
+            <a href="/" class="nav-link" data-page="/">
+                <span class="nav-icon">📊</span> Dashboard
+            </a>
+            <a href="/question-bank" class="nav-link" data-page="/question-bank">
+                <span class="nav-icon">📚</span> Question Bank
+            </a>
+            <a href="/exam-maker" class="nav-link" data-page="/exam-maker">
+                <span class="nav-icon">📝</span> Exam Maker
+            </a>
+            <a href="/saved-papers" class="nav-link" data-page="/saved-papers">
+                <span class="nav-icon">🗂</span> Saved Papers
+            </a>
+            <a href="/settings" class="nav-link" data-page="/settings">
+                <span class="nav-icon">⚙</span> Settings
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Global Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Page-specific scripts -->
+    {% block scripts %}{% endblock %}
+
+    <script>
+    (function() {
+        // Set active nav link based on current path
+        var path = window.location.pathname;
+        var links = document.querySelectorAll('.nav-link');
+        links.forEach(function(link) {
+            var page = link.getAttribute('data-page');
+            if (page === '/' && path === '/') {
+                link.classList.add('active');
+            } else if (page !== '/' && path.indexOf(page) === 0) {
+                link.classList.add('active');
+            }
+        });
+    })();
+
+    // Global toast notification
+    function showToast(message, type) {
+        type = type || 'success';
+        var container = document.getElementById('toast-container');
+        var toast = document.createElement('div');
+        toast.className = 'alert alert-' + type;
+        toast.textContent = message;
+        container.appendChild(toast);
+        // Trigger reflow for CSS transition
+        toast.offsetHeight;
+        toast.classList.add('alert-visible');
+        setTimeout(function() {
+            toast.classList.remove('alert-visible');
+            setTimeout(function() {
+                if (toast.parentNode) toast.parentNode.removeChild(toast);
+            }, 300);
+        }, 3000);
+    }
+    </script>
+</body>
+</html>
